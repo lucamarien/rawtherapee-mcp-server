@@ -2268,14 +2268,14 @@ def _generate_mask_preview(
     lower = lum_range.get("lower", 0) / 100.0 * 255.0
     upper = lum_range.get("upper", 100) / 100.0 * 255.0
 
-    with Image.open(image_path) as img:
-        img = ImageOps.exif_transpose(img)
+    with Image.open(image_path) as file_img:
+        img: Image.Image = ImageOps.exif_transpose(file_img) or file_img
 
         # Resize first for performance
         w, h = img.size
         if max(w, h) > max_width:
             scale = max_width / max(w, h)
-            img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+            img = img.resize((int(w * scale), int(h * scale)), Image.Resampling.LANCZOS)
 
         # Convert to grayscale (luminance)
         gray = img.convert("L")

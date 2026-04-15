@@ -28,7 +28,8 @@ def compute_histogram(image_path: Path) -> dict[str, Any]:
     if not image_path.is_file():
         raise FileNotFoundError(f"Image not found: {image_path}")
 
-    with Image.open(image_path) as img:
+    with Image.open(image_path) as file_img:
+        img: Image.Image = file_img
         # Convert to RGB if needed (handles RGBA, L, CMYK, etc.)
         if img.mode != "RGB":
             img = img.convert("RGB")

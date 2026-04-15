@@ -45,9 +45,9 @@ def generate_thumbnail(
         msg = f"Image file not found: {resolved}"
         raise FileNotFoundError(msg)
 
-    with Image.open(resolved) as img:
+    with Image.open(resolved) as file_img:
         # Preserve orientation from EXIF
-        img = ImageOps.exif_transpose(img)
+        img: Image.Image = ImageOps.exif_transpose(file_img) or file_img
 
         # Calculate new size preserving aspect ratio
         width, height = img.size
@@ -62,7 +62,7 @@ def generate_thumbnail(
         new_height = int(height * scale)
 
         if scale < 1.0:
-            img = img.resize((new_width, new_height), Image.LANCZOS)
+            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
         # Convert to RGB if necessary (TIFF can be RGBA/16-bit, etc.)
         if img.mode not in ("RGB", "L"):
