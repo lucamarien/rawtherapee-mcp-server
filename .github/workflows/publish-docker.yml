@@ -27,5 +27,5 @@ jobs:
           context: .
           push: true
           tags: |
-            lucamarien/rawtherapee-mcp-server:latest
-            lucamarien/rawtherapee-mcp-server:${{ steps.version.outputs.version }}
+            uhlenheide/rawtherapee-mcp-server:latest
+            uhlenheide/rawtherapee-mcp-server:${{ steps.version.outputs.version }}
