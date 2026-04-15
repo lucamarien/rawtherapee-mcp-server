@@ -1,0 +1,13 @@
+.git
+.github
+.claude
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache
+tests/
+CLAUDE.md
+.mcp.json
+requirements.md

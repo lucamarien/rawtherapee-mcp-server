@@ -1,0 +1,54 @@
+# Claude Code (local dev tooling — not published)
+.claude/
+CLAUDE.md
+.mcp.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+.eggs/
+
+# Credentials (NEVER commit)
+.env
+.env.local
+*.key
+*_apikey.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# User-created templates (local only)
+custom_templates/*
+!custom_templates/.gitkeep
+
+# Requirements doc (development only)
+requirements.md
+
+# Internal development docs (not published)
+**/release_prompt*.md
+**/feature_request*.md
+**/bugreport*.md
+**/gap_analysis*.md
+
+# RawTherapee output (user data)
+**/rawtherapee-mcp-output/

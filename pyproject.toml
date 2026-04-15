@@ -1,0 +1,89 @@
+[project]
+name = "rawtherapee-mcp-server"
+version = "1.0.0"
+description = "MCP server for AI-assisted RAW photo development via RawTherapee"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [{name = "Luca Marien"}]
+keywords = ["rawtherapee", "mcp", "photography", "raw", "model-context-protocol"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Graphics",
+]
+dependencies = [
+    "fastmcp>=2.0",
+    "exifread>=3.0.0",
+    "Pillow>=10.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/lucamarien/rawtherapee-mcp-server"
+Repository = "https://github.com/lucamarien/rawtherapee-mcp-server"
+Issues = "https://github.com/lucamarien/rawtherapee-mcp-server/issues"
+Changelog = "https://github.com/lucamarien/rawtherapee-mcp-server/blob/main/CHANGELOG.md"
+
+[project.scripts]
+rawtherapee-mcp = "rawtherapee_mcp.server:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.9",
+    "mypy>=1.14",
+    "pip-audit>=2.7",
+    "build>=1.0",
+    "twine>=5.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rawtherapee_mcp"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "S",    # bandit security checks
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "ANN",  # type annotations
+]
+ignore = [
+    "S101",  # use of assert (needed in tests)
+    "S603",  # subprocess calls (core functionality)
+    "S607",  # partial executable path (RT CLI detection)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S105", "S106", "S107", "ANN"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "integration: tests requiring RawTherapee installation (skipped by default)",
+]
+addopts = "-m 'not integration'"

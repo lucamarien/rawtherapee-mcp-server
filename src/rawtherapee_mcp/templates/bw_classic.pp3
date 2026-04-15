@@ -1,0 +1,55 @@
+[Version]
+AppVersion=5.11
+Version=351
+
+[General]
+ColorLabel=0
+InTrash=false
+
+[Exposure]
+Auto=false
+Clip=0.02
+Compensation=0
+Brightness=0
+Contrast=25
+Saturation=0
+Black=0
+HighlightCompr=0
+ShadowCompr=50
+
+[White Balance]
+Setting=Camera
+Temperature=5500
+Green=1.0
+Equal=1.0
+
+[Black & White]
+Enabled=true
+Method=ChannelMixer
+MixerRed=33
+MixerGreen=33
+MixerBlue=33
+Filter=None
+Setting=RGB-Rel
+Gamma=false
+
+[Crop]
+Enabled=false
+
+[Resize]
+Enabled=false
+
+[Sharpening]
+Enabled=true
+Method=usm
+Radius=0.60
+Amount=220
+Threshold=20;80;2000;1200;
+
+[Color Management]
+InputProfile=(camera)
+WorkingProfile=ProPhoto
+OutputProfile=RT_sRGB
+
+[Directional Pyramid Denoising]
+Enabled=false
