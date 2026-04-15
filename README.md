@@ -218,6 +218,34 @@ After installation and client configuration, try this workflow:
 3. **"The shadows are too dark"** — `add_luminance_adjustment` adds a shadow recovery spot, `preview_with_adjustments` shows the result
 4. **"Export for my phone"** — `process_raw` with `device_preset` crops and processes at the right aspect ratio
 
+## Updating
+
+The package uses `uvx` which caches installed environments. To get updates:
+
+**Recommended:** Pin to specific versions for stability:
+
+```json
+"args": ["rawtherapee-mcp-server@1.0.2"]
+```
+
+Update the version number when you want to upgrade.
+
+**Alternative:** Use `@latest` to attempt auto-updates (cache may interfere):
+
+```json
+"args": ["rawtherapee-mcp-server@latest"]
+```
+
+Restart Claude Desktop to pick up new versions.
+
+**Force update:**
+
+```bash
+uvx --force-reinstall rawtherapee-mcp-server
+```
+
+Check [GitHub Releases](https://github.com/lucamarien/rawtherapee-mcp-server/releases) for changelogs and upgrade notes.
+
 ## Available Tools (37)
 
 ### Discovery & Configuration (5)

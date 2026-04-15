@@ -4,7 +4,7 @@ Environment variables:
     RT_CLI_PATH: Path to rawtherapee-cli binary (auto-detected if not set)
     RT_OUTPUT_DIR: Default output directory (default: ~/Pictures/rawtherapee-mcp-output)
     RT_PREVIEW_DIR: Preview image directory (default: OS temp dir)
-    RT_CUSTOM_TEMPLATES_DIR: Custom PP3 templates directory (default: ./custom_templates)
+    RT_CUSTOM_TEMPLATES_DIR: Custom PP3 templates directory (default: ~/.rawtherapee-mcp/custom_templates)
     RT_PREVIEW_MAX_WIDTH: Max preview width in pixels (default: 1200)
     RT_JPEG_QUALITY: Default JPEG quality 1-100 (default: 95)
     RT_LOG_LEVEL: Logging level (default: WARNING)
@@ -159,7 +159,7 @@ def load_config() -> RTConfig:
     if custom_templates_str:
         custom_templates_dir = Path(custom_templates_str)
     else:
-        custom_templates_dir = Path("custom_templates")
+        custom_templates_dir = Path.home() / ".rawtherapee-mcp" / "custom_templates"
 
     # Preview max width
     preview_max_width_str = os.environ.get("RT_PREVIEW_MAX_WIDTH", "1200").strip()

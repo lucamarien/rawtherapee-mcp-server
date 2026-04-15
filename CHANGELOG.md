@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2026-04-15
+
+### Fixed
+
+- Use user-writable default path for `RT_CUSTOM_TEMPLATES_DIR` (`~/.rawtherapee-mcp/custom_templates`)
+- Fixes PermissionError when running via `uvx` (v1.0.1 crash on startup)
+
 ## [1.0.1] - 2026-04-15
 
 ### Fixed
