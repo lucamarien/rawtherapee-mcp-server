@@ -129,7 +129,7 @@ Use `uv` to run from the cloned repository:
   "mcpServers": {
     "rawtherapee": {
       "command": "uv",
-      "args": ["--directory", "/path/to/rawtherapee-mcp-server", "run", "rawtherapee-mcp"],
+      "args": ["--directory", "/path/to/rawtherapee-mcp-server", "run", "rawtherapee-mcp-server"],
       "env": {
         "RT_OUTPUT_DIR": "/home/you/Pictures/Processed"
       }

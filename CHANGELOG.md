@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2026-04-15
+
+### Fixed
+
+- Renamed executable from `rawtherapee-mcp` to `rawtherapee-mcp-server` to match package name
+- Enables `uvx rawtherapee-mcp-server` to work without `--from` flag (fixes PyPI installation usability)
+
 ## [1.0.0] - 2026-04-15
 
 ### Added

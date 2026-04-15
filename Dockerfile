@@ -9,4 +9,4 @@ WORKDIR /app
 COPY . .
 RUN pip install --no-cache-dir .
 
-ENTRYPOINT ["rawtherapee-mcp"]
+ENTRYPOINT ["rawtherapee-mcp-server"]

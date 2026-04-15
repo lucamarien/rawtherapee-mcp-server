@@ -206,7 +206,7 @@ Any MCP client that supports stdio transport can use this server. The configurat
 }
 ```
 
-For development installations, replace `uvx rawtherapee-mcp-server` with `uv --directory /path/to/repo run rawtherapee-mcp`.
+For development installations, replace `uvx rawtherapee-mcp-server` with `uv --directory /path/to/repo run rawtherapee-mcp-server`.
 
 ## Environment Variables
 
