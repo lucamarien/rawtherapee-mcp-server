@@ -8,6 +8,9 @@ Environment variables:
     RT_PREVIEW_MAX_WIDTH: Max preview width in pixels (default: 1200)
     RT_JPEG_QUALITY: Default JPEG quality 1-100 (default: 95)
     RT_LOG_LEVEL: Logging level (default: WARNING)
+    RT_HALDCLUT_DIR: Directory containing HaldCLUT PNG/TIFF files for film simulation
+    RT_LCP_DIR: Optional directory containing Adobe Lens Correction Profile (.lcp) files
+    RT_LENSFUN_DIR: Optional override for Lensfun database directory (auto-detected per platform if not set)
 """
 
 from __future__ import annotations
@@ -38,6 +41,48 @@ class RTConfig:
     custom_templates_dir: Path
     preview_max_width: int
     default_jpeg_quality: int
+    haldclut_dir: Path | None
+    lcp_dir: Path | None
+    lensfun_dir: Path | None
+
+
+def find_lensfun_dir(rt_cli_path: Path | None) -> Path | None:
+    """Auto-detect the Lensfun database directory.
+
+    Checks platform-specific paths, falling back to a path relative to the
+    RT binary on Windows and macOS.
+
+    Returns:
+        Path to the directory containing Lensfun XML files, or None if not found.
+    """
+    system = platform.system()
+
+    candidates: list[Path] = []
+
+    if system == "Linux":
+        candidates = [
+            Path("/usr/share/lensfun"),
+            Path("/usr/share/lensfun/version_1"),
+            Path("/usr/local/share/lensfun"),
+        ]
+    elif system == "Darwin":
+        candidates = [
+            Path("/usr/local/share/lensfun"),
+            Path("/opt/homebrew/share/lensfun"),
+        ]
+        if rt_cli_path:
+            candidates.append(rt_cli_path.parent.parent / "share" / "lensfun")
+    else:  # Windows
+        if rt_cli_path:
+            candidates.append(rt_cli_path.parent / "share" / "lensfun")
+        program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+        candidates.append(Path(program_files) / "RawTherapee" / "share" / "lensfun")
+
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+
+    return None
 
 
 def find_rt_cli() -> Path | None:
@@ -169,6 +214,40 @@ def load_config() -> RTConfig:
     jpeg_quality_str = os.environ.get("RT_JPEG_QUALITY", "95").strip()
     default_jpeg_quality = _parse_int(jpeg_quality_str, "RT_JPEG_QUALITY", 1, 100)
 
+    # HaldCLUT directory for film simulation LUTs
+    haldclut_dir: Path | None = None
+    haldclut_str = os.environ.get("RT_HALDCLUT_DIR", "").strip()
+    if haldclut_str:
+        haldclut_candidate = Path(haldclut_str)
+        if haldclut_candidate.is_dir():
+            haldclut_dir = haldclut_candidate
+        else:
+            logger.warning("RT_HALDCLUT_DIR set to %s but directory does not exist", haldclut_candidate)
+
+    # Adobe LCP directory (optional)
+    lcp_dir: Path | None = None
+    lcp_str = os.environ.get("RT_LCP_DIR", "").strip()
+    if lcp_str:
+        lcp_candidate = Path(lcp_str)
+        if lcp_candidate.is_dir():
+            lcp_dir = lcp_candidate
+        else:
+            logger.warning("RT_LCP_DIR set to %s but directory does not exist", lcp_candidate)
+
+    # Lensfun database directory
+    lensfun_dir: Path | None = None
+    lensfun_str = os.environ.get("RT_LENSFUN_DIR", "").strip()
+    if lensfun_str:
+        lensfun_candidate = Path(lensfun_str)
+        if lensfun_candidate.is_dir():
+            lensfun_dir = lensfun_candidate
+        else:
+            logger.warning("RT_LENSFUN_DIR set to %s but directory does not exist", lensfun_candidate)
+    else:
+        lensfun_dir = find_lensfun_dir(rt_cli_path)
+        if lensfun_dir:
+            logger.info("Auto-detected Lensfun database at %s", lensfun_dir)
+
     # Ensure output directories exist
     output_dir.mkdir(parents=True, exist_ok=True)
     custom_templates_dir.mkdir(parents=True, exist_ok=True)
@@ -181,4 +260,7 @@ def load_config() -> RTConfig:
         custom_templates_dir=custom_templates_dir.resolve(),
         preview_max_width=preview_max_width,
         default_jpeg_quality=default_jpeg_quality,
+        haldclut_dir=haldclut_dir.resolve() if haldclut_dir else None,
+        lcp_dir=lcp_dir.resolve() if lcp_dir else None,
+        lensfun_dir=lensfun_dir.resolve() if lensfun_dir else None,
     )

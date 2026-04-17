@@ -1,6 +1,6 @@
 [project]
 name = "rawtherapee-mcp-server"
-version = "1.0.2"
+version = "1.0.3"
 description = "MCP server for AI-assisted RAW photo development via RawTherapee"
 readme = "README.md"
 license = "MIT"
@@ -20,6 +20,7 @@ dependencies = [
     "fastmcp>=2.0",
     "exifread>=3.0.0",
     "Pillow>=10.0",
+    "piexif>=1.1.3",
 ]
 
 [project.urls]

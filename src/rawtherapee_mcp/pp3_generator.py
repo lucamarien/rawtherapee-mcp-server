@@ -84,9 +84,29 @@ _PARAMETER_MAP: dict[str, dict[str, tuple[str, str]]] = {
     },
     "lens_correction": {
         "auto": ("LensProfile", "UseDistortion"),
+        "mode": ("LensProfile", "LcMode"),
+        "lcp_file": ("LensProfile", "LCPFile"),
+        "distortion": ("LensProfile", "UseDistortion"),
+        "vignetting": ("LensProfile", "UseVignette"),
+        "ca": ("LensProfile", "UseCA"),
     },
     "lenscorrection": {
         "auto": ("LensProfile", "UseDistortion"),
+        "mode": ("LensProfile", "LcMode"),
+        "lcp_file": ("LensProfile", "LCPFile"),
+        "distortion": ("LensProfile", "UseDistortion"),
+        "vignetting": ("LensProfile", "UseVignette"),
+        "ca": ("LensProfile", "UseCA"),
+    },
+    "film_simulation": {
+        "enabled": ("Film Simulation", "Enabled"),
+        "clut_filename": ("Film Simulation", "ClutFilename"),
+        "strength": ("Film Simulation", "Strength"),
+    },
+    "filmsimulation": {
+        "enabled": ("Film Simulation", "Enabled"),
+        "clut_filename": ("Film Simulation", "ClutFilename"),
+        "strength": ("Film Simulation", "Strength"),
     },
 }
 

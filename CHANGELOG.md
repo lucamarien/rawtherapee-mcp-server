@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.3] - 2026-04-17
+
+### Added
+
+- **Lens Correction (Feature A)** — 2 new tools
+  - `apply_lens_correction`: Write Lensfun (auto-detect) or Adobe LCP correction into a PP3 profile
+  - `check_lens_support`: Query the local Lensfun XML database to check distortion/vignetting/TCA coverage for a camera/lens combination
+  - New env vars: `RT_LCP_DIR`, `RT_LENSFUN_DIR` (auto-detected per platform)
+
+- **Film Simulation / LUT Support (Feature B)** — 4 new tools
+  - `list_luts`: Scan `RT_HALDCLUT_DIR` for HaldCLUT PNG/TIFF files, grouped by category
+  - `apply_lut`: Write `[Film Simulation]` section into a PP3 profile with configurable strength
+  - `preview_lut`: Render an inline preview of a RAW file with a HaldCLUT film simulation applied
+  - `preview_lut_comparison`: Render 2–5 LUT previews side-by-side in a single response
+  - New env var: `RT_HALDCLUT_DIR`
+  - Extended `_PARAMETER_MAP` with `film_simulation`/`filmsimulation` groups
+
+- **Profile Inheritance (Feature C)** — 3 new tools
+  - `create_profile_variant`: Derive a child PP3 from any template with section-level overrides; stores parent→child relationship in `profile_hierarchy.json`
+  - `list_profile_variants`: List all variants with override summaries, optionally filtered by parent
+  - `update_base_profile`: Modify a base template and propagate changes to all child variants
+  - Variants are merged to a single PP3 in `_generated/` (avoids RT 5.12 multi-PP3 stack-overflow)
+  - `list_templates` now excludes generated variants from results
+
+- **Metadata Privacy (Feature D)** — 3 new tools
+  - `inspect_metadata`: Classify JPEG/TIFF EXIF into sensitive/technical/processing/rights buckets with privacy recommendations
+  - `strip_metadata`: Losslessly remove GPS, serial numbers, software, and owner tags (JPEG APP1 rewrite only — DCT data untouched)
+  - `set_metadata`: Write copyright, artist, description, and keywords into a JPEG
+  - New dependency: `piexif>=1.1.3`
+
+### Changed
+
+- Total tool count: 37 → 49
+
 ## [1.0.2] - 2026-04-15
 
 ### Fixed

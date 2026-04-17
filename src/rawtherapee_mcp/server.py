@@ -13,7 +13,7 @@ import time
 from collections.abc import AsyncIterator
 from importlib.resources import files
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from fastmcp import Context, FastMCP
 from fastmcp.server.lifespan import lifespan
@@ -38,6 +38,7 @@ from rawtherapee_mcp.exif_reader import (
 from rawtherapee_mcp.exif_reader import get_image_info as _get_image_info
 from rawtherapee_mcp.histogram import compute_histogram, render_histogram_svg
 from rawtherapee_mcp.image_utils import generate_thumbnail
+from rawtherapee_mcp.lensfun import check_lens_support as _check_lens_support
 from rawtherapee_mcp.locallab import (
     add_spot,
     apply_preset,
@@ -52,9 +53,15 @@ from rawtherapee_mcp.locallab import (
 from rawtherapee_mcp.locallab import (
     list_presets as list_local_presets,
 )
-from rawtherapee_mcp.pp3_generator import apply_device_crop, apply_parameters
+from rawtherapee_mcp.metadata import inspect_metadata as _inspect_metadata
+from rawtherapee_mcp.metadata import set_metadata as _set_metadata
+from rawtherapee_mcp.metadata import strip_metadata as _strip_metadata
+from rawtherapee_mcp.pp3_generator import _load_template, apply_device_crop, apply_parameters
 from rawtherapee_mcp.pp3_generator import generate_profile as _generate_profile
 from rawtherapee_mcp.pp3_parser import PP3Profile
+from rawtherapee_mcp.profile_hierarchy import create_variant as _create_variant
+from rawtherapee_mcp.profile_hierarchy import list_variants as _list_variants
+from rawtherapee_mcp.profile_hierarchy import propagate_to_variants as _propagate_to_variants
 from rawtherapee_mcp.rt_cli import get_rt_version, run_rt_cli
 
 logger = logging.getLogger("rawtherapee_mcp")
@@ -2564,6 +2571,626 @@ async def apply_local_preset(
         "spots_added": spots,
         "total_spots": get_spot_count(profile),
     }
+
+
+# ---------------------------------------------------------------------------
+# Feature A — Lens Correction
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def apply_lens_correction(
+    ctx: Context,
+    profile_path: str,
+    mode: str = "auto",
+    lcp_file: str | None = None,
+    correct_distortion: bool = True,
+    correct_vignetting: bool = True,
+    correct_ca: bool = False,
+    file_path: str | None = None,
+    save_as: str | None = None,
+) -> dict[str, Any]:
+    """Apply Lensfun or Adobe LCP lens correction to a PP3 profile.
+
+    Writes LensProfile section into the profile. Use mode='auto' for automatic
+    Lensfun correction (camera/lens detected from RAW EXIF), or mode='lcp' to
+    specify an Adobe Lens Correction Profile (.lcp file).
+    Params: profile_path, mode ('auto'|'lcp'), lcp_file, correct_distortion,
+    correct_vignetting, correct_ca, file_path (optional RAW for EXIF info), save_as
+    """
+    config = get_config(ctx)
+
+    pp3_path = Path(profile_path)
+    if not pp3_path.is_file():
+        return {"error": f"Profile not found: {profile_path}"}
+
+    if mode not in ("auto", "lcp"):
+        return {"error": f"Invalid mode '{mode}'. Use 'auto' or 'lcp'."}
+
+    if mode == "lcp":
+        if not lcp_file:
+            return {"error": "mode='lcp' requires lcp_file parameter."}
+        lcp_path = Path(lcp_file)
+        if not lcp_path.is_absolute() and config.lcp_dir:
+            lcp_path = config.lcp_dir / lcp_path
+        if not lcp_path.is_file():
+            return {"error": f"LCP file not found: {lcp_path}", "suggestion": "Set RT_LCP_DIR or use an absolute path."}
+
+    profile = PP3Profile()
+    profile.load(pp3_path)
+
+    if mode == "auto":
+        profile.set("LensProfile", "LcMode", "lfauto")
+    else:
+        profile.set("LensProfile", "LcMode", "lcp")
+        profile.set("LensProfile", "LCPFile", str(lcp_path).replace("\\", "\\\\"))
+
+    profile.set("LensProfile", "UseDistortion", str(correct_distortion).lower())
+    profile.set("LensProfile", "UseVignette", str(correct_vignetting).lower())
+    profile.set("LensProfile", "UseCA", str(correct_ca).lower())
+
+    out_path = Path(save_as) if save_as else pp3_path
+    profile.save(out_path)
+
+    result: dict[str, Any] = {
+        "profile_path": str(out_path),
+        "mode": mode,
+        "corrections_enabled": {
+            "distortion": correct_distortion,
+            "vignetting": correct_vignetting,
+            "chromatic_aberration": correct_ca,
+        },
+    }
+
+    if file_path:
+        raw_path = Path(file_path)
+        if raw_path.is_file():
+            exif = read_exif_data(raw_path)
+            result["camera_detected"] = exif.get("camera_model") or exif.get("camera_make")
+            result["lens_detected"] = exif.get("lens_model")
+        else:
+            result["warning"] = f"file_path not found for EXIF read: {file_path}"
+
+    if mode == "lcp":
+        result["lcp_file"] = str(lcp_path)
+
+    return result
+
+
+@mcp.tool()
+async def check_lens_support(
+    ctx: Context,
+    file_path: str | None = None,
+    camera_make: str | None = None,
+    camera_model: str | None = None,
+    lens_model: str | None = None,
+) -> dict[str, Any]:
+    """Check whether a camera/lens combination has a Lensfun calibration profile.
+
+    Reads EXIF from a RAW file to detect camera/lens automatically, or accepts
+    manual camera_make, camera_model, lens_model parameters. Parses the local
+    Lensfun XML database (configured via RT_LENSFUN_DIR or auto-detected).
+    Params: file_path (optional RAW for EXIF detection), camera_make, camera_model, lens_model
+    """
+    config = get_config(ctx)
+
+    if config.lensfun_dir is None:
+        return {
+            "error": "Lensfun database directory not found.",
+            "suggestion": "Set RT_LENSFUN_DIR to the directory containing Lensfun XML files.",
+        }
+
+    make = camera_make
+    model = camera_model
+    lens = lens_model
+
+    if file_path:
+        raw_path = Path(file_path)
+        if raw_path.is_file():
+            exif = read_exif_data(raw_path)
+            make = make or exif.get("camera_make")
+            model = model or exif.get("camera_model")
+            lens = lens or exif.get("lens_model")
+
+    return _check_lens_support(
+        lensfun_dir=config.lensfun_dir,
+        camera_make=make,
+        camera_model=model,
+        lens_model=lens,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Feature B — LUT Support
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def list_luts(
+    ctx: Context,
+    directory: str | None = None,
+    category: str | None = None,
+) -> dict[str, Any]:
+    """List available HaldCLUT film simulation LUT files.
+
+    Scans RT_HALDCLUT_DIR (or the optional directory parameter) for PNG/TIFF
+    HaldCLUT files and groups them by subdirectory category (e.g. 'Fuji', 'Kodak').
+    Params: directory (optional override), category (optional filter e.g. 'Fuji')
+    """
+    config = get_config(ctx)
+
+    base: Path | None
+    if directory:
+        base = Path(directory)
+        if not base.is_dir():
+            return {"error": f"Directory not found: {directory}"}
+    elif config.haldclut_dir:
+        base = config.haldclut_dir
+    else:
+        return {
+            "error": "HaldCLUT directory not configured.",
+            "suggestion": "Set RT_HALDCLUT_DIR or pass directory=... to this tool.",
+        }
+
+    categories: dict[str, list[str]] = {}
+    for lut_file in sorted(base.rglob("*")):
+        if lut_file.suffix.lower() not in (".png", ".tif", ".tiff"):
+            continue
+        if not lut_file.is_file():
+            continue
+        rel = lut_file.relative_to(base)
+        parts = rel.parts
+        cat = parts[0] if len(parts) > 1 else ""
+        if category and cat.lower() != category.lower():
+            continue
+        categories.setdefault(cat, []).append(str(rel))
+
+    grouped = {cat: {"count": len(files), "luts": files} for cat, files in sorted(categories.items())}
+    total = sum(len(cast(list[str], v["luts"])) for v in grouped.values())
+
+    return {
+        "haldclut_directory": str(base),
+        "total": total,
+        "categories": grouped,
+    }
+
+
+@mcp.tool()
+async def apply_lut(
+    ctx: Context,
+    profile_path: str,
+    lut_name: str,
+    strength: int = 100,
+    save_as: str | None = None,
+) -> dict[str, Any]:
+    """Apply a HaldCLUT film simulation LUT to a PP3 profile.
+
+    Writes the [Film Simulation] section into the profile. lut_name is the
+    relative path from RT_HALDCLUT_DIR, e.g. 'Fuji/Fuji Velvia 50.png'.
+    strength controls blend intensity (0-100).
+    Params: profile_path, lut_name, strength (0-100), save_as
+    """
+    config = get_config(ctx)
+
+    pp3_path = Path(profile_path)
+    if not pp3_path.is_file():
+        return {"error": f"Profile not found: {profile_path}"}
+
+    if not 0 <= strength <= 100:
+        return {"error": f"strength must be 0-100 (got {strength})."}
+
+    profile = PP3Profile()
+    profile.load(pp3_path)
+
+    profile.set("Film Simulation", "Enabled", "true")
+    profile.set("Film Simulation", "ClutFilename", lut_name)
+    profile.set("Film Simulation", "Strength", str(strength))
+
+    out_path = Path(save_as) if save_as else pp3_path
+    profile.save(out_path)
+
+    result: dict[str, Any] = {
+        "profile_path": str(out_path),
+        "lut_name": lut_name,
+        "strength": strength,
+    }
+
+    if config.haldclut_dir:
+        lut_abs = config.haldclut_dir / lut_name
+        if not lut_abs.is_file():
+            result["warning"] = f"LUT file not found at {lut_abs}. Verify RT_HALDCLUT_DIR and the HaldCLUT collection."
+
+    return result
+
+
+@mcp.tool()
+async def preview_lut(
+    ctx: Context,
+    file_path: str,
+    lut_name: str,
+    base_profile: str | None = None,
+    strength: int = 100,
+    max_width: int = 600,
+) -> dict[str, Any] | ToolResult:
+    """Render an inline preview of a RAW file with a HaldCLUT film simulation applied.
+
+    Optionally merges onto an existing PP3 base_profile so WB, exposure, etc.
+    are preserved. Returns an inline thumbnail image.
+    Params: file_path, lut_name, base_profile (optional PP3 path), strength (0-100), max_width
+    """
+    config = get_config(ctx)
+    rt_check = _require_rt(config)
+    if isinstance(rt_check, dict):
+        return rt_check
+
+    raw_path = Path(file_path)
+    if not raw_path.is_file():
+        return {"error": f"RAW file not found: {file_path}"}
+
+    if not 0 <= strength <= 100:
+        return {"error": f"strength must be 0-100 (got {strength})."}
+
+    if base_profile:
+        base_path = Path(base_profile)
+        if not base_path.is_file():
+            return {"error": f"Base profile not found: {base_profile}"}
+        profile = PP3Profile()
+        profile.load(base_path)
+    else:
+        from rawtherapee_mcp.pp3_generator import create_neutral_profile
+
+        profile = create_neutral_profile()
+
+    profile.set("Film Simulation", "Enabled", "true")
+    profile.set("Film Simulation", "ClutFilename", lut_name)
+    profile.set("Film Simulation", "Strength", str(strength))
+
+    preview_result = await _render_preview(config, raw_path, profile, max_width=max_width, label="lut_preview")
+    if not preview_result.get("success"):
+        return preview_result
+
+    text_summary = json.dumps(
+        {"lut_name": lut_name, "strength": strength, "base_profile": base_profile},
+        indent=2,
+    )
+    try:
+        image_content = await _preview_to_image_content(preview_result["preview_path"], max_width)
+        return ToolResult(
+            content=[TextContent(type="text", text=text_summary), image_content],
+            structured_content=preview_result,
+        )
+    except Exception:  # noqa: BLE001
+        logger.debug("LUT preview thumbnail failed", exc_info=True)
+        return preview_result
+
+
+@mcp.tool()
+async def preview_lut_comparison(
+    ctx: Context,
+    file_path: str,
+    lut_names: list[str],
+    base_profile: str | None = None,
+    strength: int = 100,
+    max_width: int = 300,
+) -> dict[str, Any] | ToolResult:
+    """Render side-by-side inline previews for 2-5 HaldCLUT LUTs for quick comparison.
+
+    Renders each LUT sequentially and returns all thumbnails in a single response.
+    Each image is labeled with its LUT name. Typical render time: 2-5s per LUT.
+    Params: file_path, lut_names (list of 2-5 LUT relative paths), base_profile,
+    strength (0-100), max_width (per image)
+    """
+    config = get_config(ctx)
+    rt_check = _require_rt(config)
+    if isinstance(rt_check, dict):
+        return rt_check
+
+    if not 2 <= len(lut_names) <= 5:
+        return {"error": f"lut_names must contain 2-5 entries (got {len(lut_names)})."}
+
+    raw_path = Path(file_path)
+    if not raw_path.is_file():
+        return {"error": f"RAW file not found: {file_path}"}
+
+    if not 0 <= strength <= 100:
+        return {"error": f"strength must be 0-100 (got {strength})."}
+
+    base_pp3: PP3Profile | None = None
+    if base_profile:
+        base_path = Path(base_profile)
+        if not base_path.is_file():
+            return {"error": f"Base profile not found: {base_profile}"}
+        base_pp3 = PP3Profile()
+        base_pp3.load(base_path)
+
+    content: list[TextContent | ImageContent] = []
+    errors: list[dict[str, str]] = []
+
+    header = f"LUT comparison — strength={strength}" + (f" — base: {base_profile}" if base_profile else "")
+    content.append(TextContent(type="text", text=header))
+
+    for lut_name in lut_names:
+        if base_pp3 is not None:
+            profile = base_pp3.copy()
+        else:
+            from rawtherapee_mcp.pp3_generator import create_neutral_profile
+
+            profile = create_neutral_profile()
+
+        profile.set("Film Simulation", "Enabled", "true")
+        profile.set("Film Simulation", "ClutFilename", lut_name)
+        profile.set("Film Simulation", "Strength", str(strength))
+
+        preview_result = await _render_preview(config, raw_path, profile, max_width=max_width, label="lutcmp")
+
+        if not preview_result.get("success"):
+            errors.append({"lut_name": lut_name, "error": preview_result.get("error", "render failed")})
+            content.append(TextContent(type="text", text=f"[ERROR] {lut_name}: {preview_result.get('error')}"))
+            continue
+
+        content.append(TextContent(type="text", text=lut_name))
+        try:
+            image_content = await _preview_to_image_content(preview_result["preview_path"], max_width)
+            content.append(image_content)
+        except Exception:  # noqa: BLE001
+            logger.debug("LUT comparison thumbnail failed for %s", lut_name, exc_info=True)
+            errors.append({"lut_name": lut_name, "error": "thumbnail generation failed"})
+
+    structured: dict[str, Any] = {
+        "lut_names": lut_names,
+        "strength": strength,
+        "base_profile": base_profile,
+        "errors": errors,
+    }
+
+    return ToolResult(content=content, structured_content=structured)
+
+
+# ---------------------------------------------------------------------------
+# Feature C — Profile Inheritance
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def create_profile_variant(
+    ctx: Context,
+    parent_profile: str,
+    variant_name: str,
+    overrides: dict[str, Any],
+    description: str | None = None,
+) -> dict[str, Any]:
+    """Create a child PP3 profile variant derived from a parent template.
+
+    The variant is generated by merging the parent PP3 with the given overrides
+    (raw PP3 section -> key -> value dict). A single merged PP3 is written to
+    _generated/<variant_name>.pp3. The parent-child relationship is tracked in
+    profile_hierarchy.json for update propagation.
+    Params: parent_profile (template name or path), variant_name, overrides
+    (e.g. {'White Balance': {'Temperature': '3800'}}), description
+    """
+    config = get_config(ctx)
+    templates_dir = _get_templates_dir()
+
+    # Resolve parent PP3 path
+    if Path(parent_profile).is_file():
+        parent_pp3_path = Path(parent_profile).resolve()
+    else:
+        try:
+            parent_pp3_obj = _load_template(parent_profile, templates_dir, config.custom_templates_dir)
+            # Determine which path was actually loaded
+            custom_p = config.custom_templates_dir / f"{parent_profile}.pp3"
+            if custom_p.is_file():
+                parent_pp3_path = custom_p.resolve()
+            else:
+                builtin_p = templates_dir / f"{parent_profile}.pp3"
+                parent_pp3_path = builtin_p.resolve()
+            del parent_pp3_obj
+        except FileNotFoundError:
+            return {"error": f"Parent profile not found: {parent_profile}"}
+
+    # Validate variant name doesn't clash with real templates
+    conflict = config.custom_templates_dir / f"{variant_name}.pp3"
+    if conflict.is_file():
+        return {"error": f"A template named '{variant_name}' already exists. Choose a different variant_name."}
+
+    try:
+        return _create_variant(
+            custom_templates_dir=config.custom_templates_dir,
+            parent_pp3_path=parent_pp3_path,
+            variant_name=variant_name,
+            overrides=overrides,
+            description=description,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"Failed to create variant: {exc}"}
+
+
+@mcp.tool()
+async def list_profile_variants(
+    ctx: Context,
+    parent_profile: str | None = None,
+) -> dict[str, Any]:
+    """List profile variants tracked by the inheritance system.
+
+    Shows parent -> [variants] relationships with override summaries and
+    effective PP3 paths. Optionally filter by parent_profile name.
+    Params: parent_profile (optional filter)
+    """
+    config = get_config(ctx)
+    return _list_variants(config.custom_templates_dir, parent_profile)
+
+
+@mcp.tool()
+async def update_base_profile(
+    ctx: Context,
+    profile_name: str,
+    adjustments: dict[str, Any],
+    propagate: bool = True,
+) -> dict[str, Any]:
+    """Update a base PP3 template and optionally propagate changes to all its variants.
+
+    Applies adjustments (raw PP3 section -> {key: value} dict, same format as
+    adjust_profile) to the named template, then regenerates all child variants so
+    their override-specific settings are preserved on top of the updated base.
+    Params: profile_name (template name or path), adjustments, propagate (default True)
+    """
+    config = get_config(ctx)
+    templates_dir = _get_templates_dir()
+
+    # Resolve the PP3 file for the named profile (custom only — built-ins are read-only)
+    if Path(profile_name).is_file():
+        pp3_path = Path(profile_name).resolve()
+    else:
+        custom_p = config.custom_templates_dir / f"{profile_name}.pp3"
+        if not custom_p.is_file():
+            # Check if it's a built-in
+            builtin_p = templates_dir / f"{profile_name}.pp3"
+            if builtin_p.is_file():
+                return {
+                    "error": f"'{profile_name}' is a built-in template and cannot be modified.",
+                    "suggestion": "Use save_template to create a custom copy first.",
+                }
+            return {"error": f"Profile not found: {profile_name}"}
+        pp3_path = custom_p.resolve()
+
+    profile = PP3Profile()
+    profile.load(pp3_path)
+    apply_parameters(profile, adjustments, raw_fallback=True)
+    profile.save(pp3_path)
+
+    result: dict[str, Any] = {
+        "profile_name": profile_name,
+        "profile_path": str(pp3_path),
+        "adjustments_applied": adjustments,
+    }
+
+    if propagate:
+        parent_name = pp3_path.stem
+        propagation = _propagate_to_variants(config.custom_templates_dir, parent_name, pp3_path)
+        result["variants_updated"] = propagation
+    else:
+        result["variants_updated"] = []
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Feature D — Metadata Privacy
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool()
+async def inspect_metadata(
+    ctx: Context,
+    file_path: str,
+) -> dict[str, Any]:
+    """Inspect EXIF metadata in an exported JPEG/TIFF and classify by sensitivity.
+
+    Returns sensitive fields (GPS, serial numbers, owner), technical fields
+    (camera, lens, ISO, aperture, shutter), processing info (software), rights
+    (copyright, artist), and privacy recommendations for public sharing.
+    Params: file_path (exported JPEG or TIFF)
+    """
+    path = Path(file_path)
+    if not path.is_file():
+        return {"error": f"File not found: {file_path}"}
+
+    return await asyncio.to_thread(_inspect_metadata, path)
+
+
+@mcp.tool()
+async def strip_metadata(
+    ctx: Context,
+    file_path: str,
+    strip_gps: bool = True,
+    strip_camera_serial: bool = True,
+    strip_lens_serial: bool = True,
+    strip_software: bool = False,
+    strip_owner: bool = False,
+    strip_all: bool = False,
+    keep_copyright: bool = True,
+    keep_orientation: bool = True,
+    output_path: str | None = None,
+) -> dict[str, Any]:
+    """Strip selected EXIF metadata from an exported JPEG file.
+
+    Operates losslessly — only the EXIF APP1 segment is rewritten, the JPEG
+    image data is not recompressed. By default removes GPS and serial numbers.
+    Use strip_all=True to remove everything except orientation (and copyright
+    if keep_copyright=True).
+    Params: file_path, strip_gps, strip_camera_serial, strip_lens_serial,
+    strip_software, strip_owner, strip_all, keep_copyright, keep_orientation,
+    output_path (None = in-place)
+    """
+    path = Path(file_path)
+    if not path.is_file():
+        return {"error": f"File not found: {file_path}"}
+
+    out = Path(output_path) if output_path else path
+
+    try:
+        return await asyncio.to_thread(
+            _strip_metadata,
+            path,
+            out,
+            strip_gps=strip_gps,
+            strip_camera_serial=strip_camera_serial,
+            strip_lens_serial=strip_lens_serial,
+            strip_software=strip_software,
+            strip_owner=strip_owner,
+            strip_all=strip_all,
+            keep_copyright=keep_copyright,
+            keep_orientation=keep_orientation,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "error": f"Failed to strip metadata: {exc}",
+            "suggestion": "Ensure the file is a valid JPEG with EXIF data.",
+        }
+
+
+@mcp.tool()
+async def set_metadata(
+    ctx: Context,
+    file_path: str,
+    copyright: str | None = None,
+    artist: str | None = None,
+    description: str | None = None,
+    keywords: list[str] | None = None,
+    output_path: str | None = None,
+) -> dict[str, Any]:
+    """Write copyright, artist, description, and keywords into an exported JPEG file.
+
+    Writes metadata losslessly (EXIF APP1 segment only, no JPEG recompression).
+    Keywords are stored as XPKeywords (UTF-16LE, semicolon-separated) for
+    compatibility with Windows Explorer and most DAM software.
+    Params: file_path, copyright (e.g. '© 2026 Luca Marien'), artist, description,
+    keywords (list of strings), output_path (None = in-place)
+    """
+    path = Path(file_path)
+    if not path.is_file():
+        return {"error": f"File not found: {file_path}"}
+
+    if not any([copyright, artist, description, keywords]):
+        return {"error": "At least one of copyright, artist, description, or keywords must be provided."}
+
+    out = Path(output_path) if output_path else path
+
+    try:
+        return await asyncio.to_thread(
+            _set_metadata,
+            path,
+            out,
+            copyright=copyright,
+            artist=artist,
+            description=description,
+            keywords=keywords,
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "error": f"Failed to set metadata: {exc}",
+            "suggestion": "Ensure the file is a valid JPEG with EXIF data.",
+        }
 
 
 # ---------------------------------------------------------------------------

@@ -40,6 +40,9 @@ def mock_config(tmp_dirs: dict[str, Path]) -> RTConfig:
         custom_templates_dir=tmp_dirs["custom_templates"],
         preview_max_width=1200,
         default_jpeg_quality=95,
+        haldclut_dir=None,
+        lcp_dir=None,
+        lensfun_dir=None,
     )
 
 
@@ -53,6 +56,9 @@ def mock_config_no_rt(tmp_dirs: dict[str, Path]) -> RTConfig:
         custom_templates_dir=tmp_dirs["custom_templates"],
         preview_max_width=1200,
         default_jpeg_quality=95,
+        haldclut_dir=None,
+        lcp_dir=None,
+        lensfun_dir=None,
     )
 
 

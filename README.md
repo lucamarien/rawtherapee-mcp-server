@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/pypi/pyversions/rawtherapee-mcp-server)](https://pypi.org/project/rawtherapee-mcp-server/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Cross-platform [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for AI-assisted RAW photo development via [RawTherapee](https://rawtherapee.com/) CLI. Provides **37 tools** for profile generation, image processing, visual previews, batch operations, device presets, and luminance-based local adjustments.
+Cross-platform [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server for AI-assisted RAW photo development via [RawTherapee](https://rawtherapee.com/) CLI. Provides **49 tools** for profile generation, image processing, visual previews, batch operations, device presets, luminance-based local adjustments, lens correction, film simulation LUTs, profile inheritance, and metadata privacy.
 
 **What makes it unique:** The LLM can *see* the photos it's editing. Preview tools return inline Base64 images via MCP's ImageContent protocol, creating a visual feedback loop where the AI analyzes the image, adjusts settings, previews the result, and iterates — just like a human editor.
 
@@ -27,7 +27,7 @@ Not all MCP clients handle inline images the same way. The visual feedback loop 
 - Backing LLM supports vision/image analysis (e.g. Claude with vision)
 - Tool response size accommodates ~150KB previews (most clients: 1MB limit)
 
-**Text-only clients:** All 37 tools work without inline images. Preview tools return file paths instead. The LLM can still read EXIF metadata, histogram statistics, generate profiles, batch process, and use luminance presets — the visual feedback loop is the only feature that requires image support.
+**Text-only clients:** All 49 tools work without inline images. Preview tools return file paths instead. The LLM can still read EXIF metadata, histogram statistics, generate profiles, batch process, and use luminance presets — the visual feedback loop is the only feature that requires image support.
 
 ## Prerequisites
 
@@ -225,7 +225,7 @@ The package uses `uvx` which caches installed environments. To get updates:
 **Recommended:** Pin to specific versions for stability:
 
 ```json
-"args": ["rawtherapee-mcp-server@1.0.2"]
+"args": ["rawtherapee-mcp-server@1.0.3"]
 ```
 
 Update the version number when you want to upgrade.
@@ -246,7 +246,7 @@ uvx --force-reinstall rawtherapee-mcp-server
 
 Check [GitHub Releases](https://github.com/lucamarien/rawtherapee-mcp-server/releases) for changelogs and upgrade notes.
 
-## Available Tools (37)
+## Available Tools (49)
 
 ### Discovery & Configuration (5)
 
@@ -319,6 +319,38 @@ Check [GitHub Releases](https://github.com/lucamarien/rawtherapee-mcp-server/rel
 | `adjust_local_spot` | Modify an existing Locallab spot |
 | `remove_local_adjustment` | Remove a Locallab spot |
 | `apply_local_preset` | Apply a predefined local adjustment preset with intensity scaling |
+
+### Lens Correction (2)
+
+| Tool | Description |
+|------|-------------|
+| `apply_lens_correction` | Apply Lensfun auto-detect or Adobe LCP correction to a PP3 profile |
+| `check_lens_support` | Query the Lensfun database for distortion/vignetting/TCA coverage |
+
+### Film Simulation / LUT Support (4)
+
+| Tool | Description |
+|------|-------------|
+| `list_luts` | Scan `RT_HALDCLUT_DIR` for HaldCLUT film simulation LUTs, grouped by category |
+| `apply_lut` | Write a HaldCLUT film simulation into a PP3 profile with configurable strength |
+| `preview_lut` | Render an inline preview of a RAW file with a film simulation applied |
+| `preview_lut_comparison` | Render 2–5 LUT previews side-by-side for quick comparison |
+
+### Profile Inheritance (3)
+
+| Tool | Description |
+|------|-------------|
+| `create_profile_variant` | Derive a child PP3 from a parent template with section-level overrides |
+| `list_profile_variants` | List all variants with override summaries, optionally filtered by parent |
+| `update_base_profile` | Modify a base template and propagate changes to all child variants |
+
+### Metadata Privacy (3)
+
+| Tool | Description |
+|------|-------------|
+| `inspect_metadata` | Classify JPEG/TIFF EXIF into sensitive/technical/rights buckets with privacy recommendations |
+| `strip_metadata` | Losslessly remove GPS, serial numbers, software, and owner tags from a JPEG |
+| `set_metadata` | Write copyright, artist, description, and keywords into a JPEG |
 
 ## Built-in Resources
 
