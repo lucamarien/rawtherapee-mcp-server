@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.4] - 2026-04-17
+
+### Fixed
+
+- FastMCP startup banner incorrectly showed `1.0.2` on the v1.0.3 wheel because `__version__` in `__init__.py` was not bumped alongside `pyproject.toml`. Functionality was unaffected — all 49 v1.0.3 tools shipped and worked correctly.
+
+### Changed
+
+- `__version__` is now read from installed package metadata via `importlib.metadata.version()` instead of a hard-coded string, so it can never drift from `pyproject.toml` again.
+
 ## [1.0.3] - 2026-04-17
 
 ### Added

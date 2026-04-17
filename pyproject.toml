@@ -1,6 +1,6 @@
 [project]
 name = "rawtherapee-mcp-server"
-version = "1.0.3"
+version = "1.0.4"
 description = "MCP server for AI-assisted RAW photo development via RawTherapee"
 readme = "README.md"
 license = "MIT"
