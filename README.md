@@ -39,7 +39,7 @@ Verify the RawTherapee CLI is reachable before proceeding:
 
 **Windows (PowerShell):**
 ```powershell
-& "C:\Program Files\RawTherapee\5.11\rawtherapee-cli.exe" --version
+& "C:\Program Files\RawTherapee\5.12\rawtherapee-cli.exe" --version
 ```
 
 **macOS:**
@@ -77,7 +77,7 @@ No persistent install. uvx downloads, caches, and runs the server on demand.
       "command": "uvx",
       "args": ["rawtherapee-mcp-server@1.0.4"],
       "env": {
-        "RT_CLI_PATH": "C:\\Program Files\\RawTherapee\\5.11\\rawtherapee-cli.exe",
+        "RT_CLI_PATH": "C:\\Program Files\\RawTherapee\\5.12\\rawtherapee-cli.exe",
         "RT_OUTPUT_DIR": "C:\\Users\\YourName\\Pictures\\rawtherapee-output"
       }
     }
@@ -161,7 +161,7 @@ Point Claude Desktop at the venv's entry-point script directly. No activation st
       "command": "C:\\Users\\YourName\\.rawtherapee-mcp-env\\Scripts\\rawtherapee-mcp-server.exe",
       "args": [],
       "env": {
-        "RT_CLI_PATH": "C:\\Program Files\\RawTherapee\\5.11\\rawtherapee-cli.exe",
+        "RT_CLI_PATH": "C:\\Program Files\\RawTherapee\\5.12\\rawtherapee-cli.exe",
         "RT_OUTPUT_DIR": "C:\\Users\\YourName\\Pictures\\rawtherapee-output"
       }
     }
@@ -243,7 +243,7 @@ The RawTherapee CLI path is auto-detected on most systems. Set `RT_CLI_PATH` if 
       "command": "uvx",
       "args": ["rawtherapee-mcp-server"],
       "env": {
-        "RT_CLI_PATH": "C:\\Program Files\\RawTherapee\\5.11\\rawtherapee-cli.exe",
+        "RT_CLI_PATH": "C:\\Program Files\\RawTherapee\\5.12\\rawtherapee-cli.exe",
         "RT_OUTPUT_DIR": "D:\\Photos\\Processed"
       }
     }
@@ -630,7 +630,7 @@ See [.env.example](.env.example) for a documented configuration template.
 **RawTherapee not found:**
 - Run `check_rt_status` to see detection details
 - Set `RT_CLI_PATH` to the full path of `rawtherapee-cli`:
-  - Windows: `C:\Program Files\RawTherapee\5.11\rawtherapee-cli.exe`
+  - Windows: `C:\Program Files\RawTherapee\5.12\rawtherapee-cli.exe`
   - macOS: `/Applications/RawTherapee.app/Contents/MacOS/rawtherapee-cli`
   - Linux: `/usr/bin/rawtherapee-cli`
 

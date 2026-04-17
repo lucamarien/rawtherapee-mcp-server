@@ -39,7 +39,7 @@ Set the RawTherapee CLI path via `RT_CLI_PATH` if auto-detection doesn't find it
       "command": "uvx",
       "args": ["rawtherapee-mcp-server"],
       "env": {
-        "RT_CLI_PATH": "C:\\Program Files\\RawTherapee\\5.11\\rawtherapee-cli.exe",
+        "RT_CLI_PATH": "C:\\Program Files\\RawTherapee\\5.12\\rawtherapee-cli.exe",
         "RT_OUTPUT_DIR": "D:\\Photos\\Processed"
       }
     }
@@ -100,7 +100,7 @@ RT CLI is auto-detected at `/usr/bin/rawtherapee-cli`.
       "command": "C:\\Users\\YourName\\.rawtherapee-mcp-env\\Scripts\\rawtherapee-mcp-server.exe",
       "args": [],
       "env": {
-        "RT_CLI_PATH": "C:\\Program Files\\RawTherapee\\5.11\\rawtherapee-cli.exe",
+        "RT_CLI_PATH": "C:\\Program Files\\RawTherapee\\5.12\\rawtherapee-cli.exe",
         "RT_OUTPUT_DIR": "C:\\Users\\YourName\\Pictures\\rawtherapee-output"
       }
     }

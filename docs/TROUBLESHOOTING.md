@@ -114,13 +114,13 @@ The server resolves the RawTherapee CLI via the `RT_CLI_PATH` environment variab
 
 ```json
 "env": {
-  "RT_CLI_PATH": "C:\\Program Files\\RawTherapee\\5.11\\rawtherapee-cli.exe"
+  "RT_CLI_PATH": "C:\\Program Files\\RawTherapee\\5.12\\rawtherapee-cli.exe"
 }
 ```
 
 Common paths:
 
-- Windows: `C:\Program Files\RawTherapee\5.11\rawtherapee-cli.exe` (version number in path varies)
+- Windows: `C:\Program Files\RawTherapee\5.12\rawtherapee-cli.exe` (version number in path varies)
 - macOS: `/Applications/RawTherapee.app/Contents/MacOS/rawtherapee-cli`
 - Linux: `/usr/bin/rawtherapee-cli` or `/snap/bin/rawtherapee-cli`
 
