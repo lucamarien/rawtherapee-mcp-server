@@ -6,7 +6,19 @@
 - [uv](https://docs.astral.sh/uv/) (recommended) or pip
 - RawTherapee 5.9+ (optional — unit tests run without it)
 
-## Setup
+## Install patterns
+
+Three install patterns exist for this project - pick the one that matches your goal:
+
+| Pattern | Use when |
+|---------|----------|
+| **uvx** (end-user) | Running a released version as an MCP server with minimal setup |
+| **pip + venv** (end-user) | Running a released version with explicit version control and easier debugging |
+| **editable clone** (contributor) | Modifying source code - changes are reflected without reinstall |
+
+See [README.md](../README.md#installation) for the uvx and pip+venv end-user install instructions.
+
+## Setup (contributor - editable install)
 
 ### With uv (recommended)
 
@@ -21,8 +33,28 @@ uv sync --extra dev
 ```bash
 git clone https://github.com/lucamarien/rawtherapee-mcp-server
 cd rawtherapee-mcp-server
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
 ```
+
+To use this editable install with Claude Desktop, point the config at the venv's entry-point script:
+
+```json
+{
+  "mcpServers": {
+    "rawtherapee": {
+      "command": "/path/to/rawtherapee-mcp-server/.venv/bin/rawtherapee-mcp-server",
+      "args": [],
+      "env": {
+        "RT_OUTPUT_DIR": "/path/to/output"
+      }
+    }
+  }
+}
+```
+
+Changes to the source are picked up on Claude Desktop restart - no reinstall needed because of the `-e` editable install.
 
 ## Running Checks
 
@@ -62,7 +94,7 @@ uv run pytest -v
 ```
 rawtherapee-mcp-server/
 ├── src/rawtherapee_mcp/      # Source code
-│   ├── server.py             # MCP server + 37 tool registrations
+│   ├── server.py             # MCP server + 49 tool registrations
 │   ├── config.py             # Environment-based configuration
 │   ├── rt_cli.py             # RawTherapee CLI subprocess wrapper
 │   ├── pp3_parser.py         # Custom PP3 profile parser

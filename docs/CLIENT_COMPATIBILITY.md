@@ -20,7 +20,7 @@ For the full visual feedback loop (see preview, adjust, re-preview), the MCP cli
 2. **Pass** the image to the backing LLM for vision/analysis
 3. **Support** tool responses up to ~1MB (previews are typically 50-150KB)
 
-All 37 tools work without inline images — clients that don't support `ImageContent` receive file paths to the generated images instead.
+All 49 tools work without inline images — clients that don't support `ImageContent` receive file paths to the generated images instead.
 
 ## Claude Desktop (Tested)
 
@@ -89,24 +89,93 @@ RT CLI is auto-detected at `/usr/bin/rawtherapee-cli`.
 - Claude's vision capabilities enable full image analysis of previews
 - Inline images render directly in the conversation
 
+### Option B - pip + venv
+
+**Windows** (`%APPDATA%\Claude\claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "rawtherapee": {
+      "command": "C:\\Users\\YourName\\.rawtherapee-mcp-env\\Scripts\\rawtherapee-mcp-server.exe",
+      "args": [],
+      "env": {
+        "RT_CLI_PATH": "C:\\Program Files\\RawTherapee\\5.11\\rawtherapee-cli.exe",
+        "RT_OUTPUT_DIR": "C:\\Users\\YourName\\Pictures\\rawtherapee-output"
+      }
+    }
+  }
+}
+```
+
+**macOS** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "rawtherapee": {
+      "command": "/Users/yourname/.rawtherapee-mcp-env/bin/rawtherapee-mcp-server",
+      "args": [],
+      "env": {
+        "RT_OUTPUT_DIR": "/Users/yourname/Pictures/rawtherapee-output"
+      }
+    }
+  }
+}
+```
+
+**Linux** (`~/.config/Claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "rawtherapee": {
+      "command": "/home/yourname/.rawtherapee-mcp-env/bin/rawtherapee-mcp-server",
+      "args": [],
+      "env": {
+        "RT_OUTPUT_DIR": "/home/yourname/Pictures/rawtherapee-output"
+      }
+    }
+  }
+}
+```
+
+Install the venv first if you haven't yet - see the [Installation section in README.md](../README.md#option-b----pip--venv).
+
 ### Troubleshooting
 
-- **Server not appearing:** Restart Claude Desktop after config changes
+- **Server not appearing:** Fully quit Claude Desktop (it runs as a background process on macOS and Windows - closing the window is not enough), then relaunch
 - **"RawTherapee not found":** Run `check_rt_status` and set `RT_CLI_PATH`
 - **Config location on Windows:** `%APPDATA%` is typically `C:\Users\<name>\AppData\Roaming`
+- **New version installed but tools unchanged:** See [TROUBLESHOOTING.md](TROUBLESHOOTING.md#stale-tool-list-after-update)
 
 ## Claude Code (Tested)
 
 **Status:** Full MCP support. Images are not rendered in the terminal, but all tools work and the LLM can still analyze image data.
 
-### Configuration
+### Option A - uvx
 
 ```bash
-# Published package
 claude mcp add rawtherapee -- uvx rawtherapee-mcp-server
+```
 
-# Development (from source)
-claude mcp add rawtherapee -- uv --directory /path/to/rawtherapee-mcp-server run rawtherapee-mcp
+### Option B - pip + venv
+
+```bash
+# Install venv first (one-time):
+python3 -m venv ~/.rawtherapee-mcp-env
+~/.rawtherapee-mcp-env/bin/pip install rawtherapee-mcp-server
+
+# Register with Claude Code:
+claude mcp add rawtherapee -- ~/.rawtherapee-mcp-env/bin/rawtherapee-mcp-server
+```
+
+**Windows:**
+
+```powershell
+python -m venv "$env:USERPROFILE\.rawtherapee-mcp-env"
+& "$env:USERPROFILE\.rawtherapee-mcp-env\Scripts\pip.exe" install rawtherapee-mcp-server
+claude mcp add rawtherapee -- "$env:USERPROFILE\.rawtherapee-mcp-env\Scripts\rawtherapee-mcp-server.exe"
 ```
 
 ### Notes
@@ -120,7 +189,7 @@ claude mcp add rawtherapee -- uv --directory /path/to/rawtherapee-mcp-server run
 
 **Status:** Should work — Cursor documents MCP support including ImageContent in tool responses.
 
-### Configuration
+### Option A - uvx
 
 Add to `.cursor/mcp.json` in your project root:
 
@@ -139,11 +208,30 @@ Add to `.cursor/mcp.json` in your project root:
 }
 ```
 
+### Option B - pip + venv
+
+Add to `.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "rawtherapee": {
+      "command": "/home/yourname/.rawtherapee-mcp-env/bin/rawtherapee-mcp-server",
+      "args": [],
+      "env": {
+        "RT_CLI_PATH": "/usr/bin/rawtherapee-cli",
+        "RT_OUTPUT_DIR": "/home/yourname/Pictures/rawtherapee-output"
+      }
+    }
+  }
+}
+```
+
 ## Windsurf (Untested)
 
 **Status:** Should work — MCP support confirmed, image handling expected based on architecture.
 
-### Configuration
+### Option A - uvx
 
 Add to your Windsurf MCP configuration:
 
@@ -162,11 +250,28 @@ Add to your Windsurf MCP configuration:
 }
 ```
 
+### Option B - pip + venv
+
+```json
+{
+  "mcpServers": {
+    "rawtherapee": {
+      "command": "/home/yourname/.rawtherapee-mcp-env/bin/rawtherapee-mcp-server",
+      "args": [],
+      "env": {
+        "RT_CLI_PATH": "/usr/bin/rawtherapee-cli",
+        "RT_OUTPUT_DIR": "/home/yourname/Pictures/rawtherapee-output"
+      }
+    }
+  }
+}
+```
+
 ## Cline (Untested)
 
 **Status:** MCP support present. Community reports suggest `ImageContent` may not render correctly ([#1865](https://github.com/cline/cline/issues/1865)).
 
-### Configuration
+### Option A - uvx
 
 Add to your Cline MCP settings in VS Code:
 
@@ -185,6 +290,23 @@ Add to your Cline MCP settings in VS Code:
 }
 ```
 
+### Option B - pip + venv
+
+```json
+{
+  "mcpServers": {
+    "rawtherapee": {
+      "command": "/home/yourname/.rawtherapee-mcp-env/bin/rawtherapee-mcp-server",
+      "args": [],
+      "env": {
+        "RT_CLI_PATH": "/usr/bin/rawtherapee-cli",
+        "RT_OUTPUT_DIR": "/home/yourname/Pictures/rawtherapee-output"
+      }
+    }
+  }
+}
+```
+
 ### Notes
 
 - All text-based tools (EXIF, profiles, batch processing) should work
@@ -193,7 +315,9 @@ Add to your Cline MCP settings in VS Code:
 
 ## Generic MCP Client
 
-Any MCP client that supports stdio transport can use this server. The configuration pattern is the same:
+Any MCP client that supports stdio transport can use this server.
+
+**Option A - uvx:**
 
 ```json
 {
@@ -206,7 +330,20 @@ Any MCP client that supports stdio transport can use this server. The configurat
 }
 ```
 
-For development installations, replace `uvx rawtherapee-mcp-server` with `uv --directory /path/to/repo run rawtherapee-mcp-server`.
+**Option B - pip + venv:**
+
+```json
+{
+  "command": "/home/yourname/.rawtherapee-mcp-env/bin/rawtherapee-mcp-server",
+  "args": [],
+  "env": {
+    "RT_CLI_PATH": "/path/to/rawtherapee-cli",
+    "RT_OUTPUT_DIR": "/path/to/output"
+  }
+}
+```
+
+For development installations, replace the `command` with `uv --directory /path/to/repo run rawtherapee-mcp-server`.
 
 ## Environment Variables
 

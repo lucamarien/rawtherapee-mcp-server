@@ -40,7 +40,7 @@ FastMCP Server (server.py)
 src/rawtherapee_mcp/
 ├── __init__.py          # Package version (__version__)
 ├── __main__.py          # Entry: python -m rawtherapee_mcp
-├── server.py            # FastMCP server, all 37 tool registrations, main()
+├── server.py            # FastMCP server, all 49 tool registrations, main()
 ├── config.py            # Configuration loading from environment variables
 ├── rt_cli.py            # rawtherapee-cli subprocess wrapper (async)
 ├── pp3_parser.py        # Custom PP3 profile reader/writer

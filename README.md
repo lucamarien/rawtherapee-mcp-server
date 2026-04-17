@@ -35,21 +35,197 @@ Not all MCP clients handle inline images the same way. The visual feedback loop 
 - [RawTherapee](https://rawtherapee.com/) 5.9+ with CLI component installed
 - An MCP-compatible client (see table above)
 
+Verify the RawTherapee CLI is reachable before proceeding:
+
+**Windows (PowerShell):**
+```powershell
+& "C:\Program Files\RawTherapee\5.11\rawtherapee-cli.exe" --version
+```
+
+**macOS:**
+```bash
+/Applications/RawTherapee.app/Contents/MacOS/rawtherapee-cli --version
+```
+
+**Linux:**
+```bash
+rawtherapee-cli --version
+```
+
 ## Installation
 
-### From PyPI
+Two supported methods - pick the one that matches your priorities:
 
-```bash
-pip install rawtherapee-mcp-server
+| Method | Choose when you want |
+|--------|---------------------|
+| **uvx** | Minimal setup, no persistent install, standard MCP community pattern |
+| **pip + venv** | Explicit version control, predictable updates, easier debugging, air-gapped environments |
+
+### Option A - uvx
+
+No persistent install. uvx downloads, caches, and runs the server on demand.
+
+**Important:** always pin a specific version. The unpinned form (`"rawtherapee-mcp-server"`) locks to the first resolved version and will not auto-upgrade on its own. See [Updating](#updating) for the full refresh procedure.
+
+<details>
+<summary><strong>Windows</strong> (<code>%APPDATA%\Claude\claude_desktop_config.json</code>)</summary>
+
+```json
+{
+  "mcpServers": {
+    "rawtherapee": {
+      "command": "uvx",
+      "args": ["rawtherapee-mcp-server@1.0.4"],
+      "env": {
+        "RT_CLI_PATH": "C:\\Program Files\\RawTherapee\\5.11\\rawtherapee-cli.exe",
+        "RT_OUTPUT_DIR": "C:\\Users\\YourName\\Pictures\\rawtherapee-output"
+      }
+    }
+  }
+}
 ```
 
-### From source
+</details>
 
-```bash
-git clone https://github.com/lucamarien/rawtherapee-mcp-server
-cd rawtherapee-mcp-server
-pip install -e ".[dev]"
+<details>
+<summary><strong>macOS</strong> (<code>~/Library/Application Support/Claude/claude_desktop_config.json</code>)</summary>
+
+```json
+{
+  "mcpServers": {
+    "rawtherapee": {
+      "command": "uvx",
+      "args": ["rawtherapee-mcp-server@1.0.4"],
+      "env": {
+        "RT_OUTPUT_DIR": "/Users/yourname/Pictures/rawtherapee-output"
+      }
+    }
+  }
+}
 ```
+
+RT CLI is auto-detected at `/Applications/RawTherapee.app/Contents/MacOS/rawtherapee-cli`. Set `RT_CLI_PATH` if your installation differs.
+
+</details>
+
+<details>
+<summary><strong>Linux</strong> (<code>~/.config/Claude/claude_desktop_config.json</code>)</summary>
+
+```json
+{
+  "mcpServers": {
+    "rawtherapee": {
+      "command": "uvx",
+      "args": ["rawtherapee-mcp-server@1.0.4"],
+      "env": {
+        "RT_OUTPUT_DIR": "/home/yourname/Pictures/rawtherapee-output"
+      }
+    }
+  }
+}
+```
+
+RT CLI is auto-detected at `/usr/bin/rawtherapee-cli`. Set `RT_CLI_PATH` if needed.
+
+</details>
+
+### Option B - pip + venv
+
+Explicit install with a dedicated virtual environment. You control exactly which version is running and updates are transparent.
+
+#### 1. Create the venv and install
+
+**Windows (PowerShell):**
+```powershell
+python -m venv "$env:USERPROFILE\.rawtherapee-mcp-env"
+& "$env:USERPROFILE\.rawtherapee-mcp-env\Scripts\pip.exe" install rawtherapee-mcp-server
+```
+
+**macOS / Linux:**
+```bash
+python3 -m venv ~/.rawtherapee-mcp-env
+~/.rawtherapee-mcp-env/bin/pip install rawtherapee-mcp-server
+```
+
+#### 2. Configure Claude Desktop
+
+Point Claude Desktop at the venv's entry-point script directly. No activation step is needed - the path is absolute.
+
+<details>
+<summary><strong>Windows</strong> (<code>%APPDATA%\Claude\claude_desktop_config.json</code>)</summary>
+
+```json
+{
+  "mcpServers": {
+    "rawtherapee": {
+      "command": "C:\\Users\\YourName\\.rawtherapee-mcp-env\\Scripts\\rawtherapee-mcp-server.exe",
+      "args": [],
+      "env": {
+        "RT_CLI_PATH": "C:\\Program Files\\RawTherapee\\5.11\\rawtherapee-cli.exe",
+        "RT_OUTPUT_DIR": "C:\\Users\\YourName\\Pictures\\rawtherapee-output"
+      }
+    }
+  }
+}
+```
+
+Replace `YourName` with your actual Windows username.
+
+</details>
+
+<details>
+<summary><strong>macOS</strong> (<code>~/Library/Application Support/Claude/claude_desktop_config.json</code>)</summary>
+
+```json
+{
+  "mcpServers": {
+    "rawtherapee": {
+      "command": "/Users/yourname/.rawtherapee-mcp-env/bin/rawtherapee-mcp-server",
+      "args": [],
+      "env": {
+        "RT_OUTPUT_DIR": "/Users/yourname/Pictures/rawtherapee-output"
+      }
+    }
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>Linux</strong> (<code>~/.config/Claude/claude_desktop_config.json</code>)</summary>
+
+```json
+{
+  "mcpServers": {
+    "rawtherapee": {
+      "command": "/home/yourname/.rawtherapee-mcp-env/bin/rawtherapee-mcp-server",
+      "args": [],
+      "env": {
+        "RT_OUTPUT_DIR": "/home/yourname/Pictures/rawtherapee-output"
+      }
+    }
+  }
+}
+```
+
+</details>
+
+#### 3. Verify the install
+
+**Windows:**
+```powershell
+& "$env:USERPROFILE\.rawtherapee-mcp-env\Scripts\python.exe" -c "import rawtherapee_mcp; print(rawtherapee_mcp.__version__)"
+```
+
+**macOS / Linux:**
+```bash
+~/.rawtherapee-mcp-env/bin/python -c "import rawtherapee_mcp; print(rawtherapee_mcp.__version__)"
+```
+
+Expected output: the installed version number (e.g. `1.0.4`).
+
+After editing `claude_desktop_config.json`, fully quit and restart Claude Desktop - closing the window alone leaves a background process running on both macOS and Windows.
 
 ## Client Configuration
 
@@ -209,6 +385,8 @@ Add to your Cline MCP settings:
 
 > **Note:** Cline may not render inline images from tool responses. All text-based tools work normally.
 
+For pip + venv config examples for all clients, see [docs/CLIENT_COMPATIBILITY.md](docs/CLIENT_COMPATIBILITY.md).
+
 ## Quick Start
 
 After installation and client configuration, try this workflow:
@@ -220,31 +398,67 @@ After installation and client configuration, try this workflow:
 
 ## Updating
 
-The package uses `uvx` which caches installed environments. To get updates:
+Both installation methods require a two-step procedure. Upgrading the package alone is not enough - Claude Desktop caches the MCP server's tool list. Always follow the full sequence: update package → fully quit Claude Desktop → relaunch.
 
-**Recommended:** Pin to specific versions for stability:
+### With uvx
 
-```json
-"args": ["rawtherapee-mcp-server@1.0.3"]
+uvx creates a per-package receipt that locks the resolved version. `--refresh` re-downloads the same locked version; it does not upgrade. To get a new release, clear the receipt and update the version pin:
+
+**Windows (PowerShell):**
+
+```powershell
+uv cache clean rawtherapee-mcp-server
+# Update the version pin in %APPDATA%\Claude\claude_desktop_config.json
+# e.g. change @1.0.4 to @1.0.5
+Get-Process *claude* -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Process "$env:LOCALAPPDATA\AnthropicClaude\Claude.exe"
 ```
 
-Update the version number when you want to upgrade.
-
-**Alternative:** Use `@latest` to attempt auto-updates (cache may interfere):
-
-```json
-"args": ["rawtherapee-mcp-server@latest"]
-```
-
-Restart Claude Desktop to pick up new versions.
-
-**Force update:**
+**macOS:**
 
 ```bash
-uvx --force-reinstall rawtherapee-mcp-server
+uv cache clean rawtherapee-mcp-server
+# Update the version pin in ~/Library/Application Support/Claude/claude_desktop_config.json
+osascript -e 'quit app "Claude"' && sleep 2 && open -a Claude
 ```
 
-Check [GitHub Releases](https://github.com/lucamarien/rawtherapee-mcp-server/releases) for changelogs and upgrade notes.
+**Linux:**
+
+```bash
+uv cache clean rawtherapee-mcp-server
+# Update the version pin in ~/.config/Claude/claude_desktop_config.json
+pkill -f claude && sleep 2 && claude &
+```
+
+### With pip + venv
+
+**Windows:**
+
+```powershell
+& "$env:USERPROFILE\.rawtherapee-mcp-env\Scripts\pip.exe" install --upgrade rawtherapee-mcp-server
+Get-Process *claude* -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Process "$env:LOCALAPPDATA\AnthropicClaude\Claude.exe"
+```
+
+**macOS / Linux:**
+
+```bash
+~/.rawtherapee-mcp-env/bin/pip install --upgrade rawtherapee-mcp-server
+# macOS:
+osascript -e 'quit app "Claude"' && sleep 2 && open -a Claude
+# Linux:
+pkill -f claude && sleep 2 && claude &
+```
+
+### Verify the update worked
+
+After relaunch, ask Claude:
+
+> "What is the current rawtherapee-mcp-server version and how many tools are registered?"
+
+Compare against [CHANGELOG.md](CHANGELOG.md). If the version string is correct but new tools are missing, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md#stale-tool-list-after-update).
+
+Check [GitHub Releases](https://github.com/lucamarien/rawtherapee-mcp-server/releases) for full changelogs.
 
 ## Available Tools (49)
 
@@ -432,6 +646,9 @@ See [.env.example](.env.example) for a documented configuration template.
 - Verify the entry in your MCP client config is correct
 - Restart your MCP client after config changes
 - Set `RT_LOG_LEVEL=DEBUG` to see detailed logs on stderr
+
+**New version installed but old tools still showing in Claude:**
+See [docs/TROUBLESHOOTING.md - Stale tool list after update](docs/TROUBLESHOOTING.md#stale-tool-list-after-update). Short version: fully quit Claude Desktop (it runs as a background process), then relaunch.
 
 ## Docker
 
