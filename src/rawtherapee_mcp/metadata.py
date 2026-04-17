@@ -10,8 +10,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
-import piexif  # type: ignore[import-untyped,import-not-found]
-import piexif.helper  # type: ignore[import-untyped,import-not-found]
+import piexif
+import piexif.helper
 
 logger = logging.getLogger("rawtherapee_mcp")
 
